@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router";
-import { Query, Mutation, useApolloClient } from "react-apollo";
+import { useApolloClient, useMutation, useQuery } from "react-apollo";
 import { gql } from "apollo-boost";
 import { ROOT_QUERY } from "./App";
 
@@ -17,22 +17,19 @@ const requestCode = () => {
   window.location = `https://github.com/login/oauth/authorize?client_id=${clinentID}&scope=user`;
 };
 
-const Me = ({ logout, requestCode, signingIn }) => (
-  <Query query={ROOT_QUERY} fetchPolicy={"cache-only"}>
-    {q => {
-      const { loading, data } = q;
-      return data && data.me ? (
-        <CurrentUser {...data.me} logout={logout} />
-      ) : loading ? (
-        <p>loading... </p>
-      ) : (
-        <button onClick={requestCode} disabled={signingIn}>
-          Sign In with Github
-        </button>
-      );
-    }}
-  </Query>
-);
+const Me = ({ logout, requestCode, signingIn }) => {
+  const { loading, data } = useQuery(ROOT_QUERY);
+
+  return data && data.me ? (
+    <CurrentUser {...data.me} logout={logout} />
+  ) : loading ? (
+    <p>loading... </p>
+  ) : (
+    <button onClick={requestCode} disabled={signingIn}>
+      Sign In with Github
+    </button>
+  );
+};
 
 const CurrentUser = ({ name, avatar, logout }) => (
   <div>
@@ -42,8 +39,19 @@ const CurrentUser = ({ name, avatar, logout }) => (
   </div>
 );
 
-const Inner = ({ githubAuthMutation, signingIn, setSigningIn }) => {
+const AuthorizedUser = () => {
+  const history = useHistory();
+  const [signingIn, setSigningIn] = useState(false);
   const client = useApolloClient();
+
+  const [githubAuthMutation] = useMutation(GITHUB_AUTH_MUTATION, {
+    update: (cache, { data }) => {
+      localStorage.setItem("token", data.githubAuth.token);
+      history.replace("/");
+      setSigningIn(false);
+    },
+    refetchQueries: [{ query: ROOT_QUERY }]
+  });
 
   useEffect(() => {
     if (window.location.search.match(/code=/)) {
@@ -63,33 +71,6 @@ const Inner = ({ githubAuthMutation, signingIn, setSigningIn }) => {
         client.writeQuery({ query: ROOT_QUERY, data: { ...data, me: null } });
       }}
     />
-  );
-};
-
-const AuthorizedUser = () => {
-  const history = useHistory();
-  const [signingIn, setSigningIn] = useState(false);
-
-  const authorizationComplete = (cache, { data }) => {
-    localStorage.setItem("token", data.githubAuth.token);
-    history.replace("/");
-    setSigningIn(false);
-  };
-
-  return (
-    <Mutation
-      mutation={GITHUB_AUTH_MUTATION}
-      update={authorizationComplete}
-      refetchQueries={[{ query: ROOT_QUERY }]}
-    >
-      {mutation => (
-        <Inner
-          githubAuthMutation={mutation}
-          signingIn={signingIn}
-          setSigningIn={setSigningIn}
-        />
-      )}
-    </Mutation>
   );
 };
 
