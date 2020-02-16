@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router";
-import { Query, Mutation } from "react-apollo";
+import { Query, Mutation, useApolloClient } from "react-apollo";
 import { gql } from "apollo-boost";
 import { ROOT_QUERY } from "./App";
 
@@ -18,7 +18,7 @@ const requestCode = () => {
 };
 
 const Me = ({ logout, requestCode, signingIn }) => (
-  <Query query={ROOT_QUERY}>
+  <Query query={ROOT_QUERY} fetchPolicy={"cache-only"}>
     {q => {
       const { loading, data } = q;
       return data && data.me ? (
@@ -43,6 +43,8 @@ const CurrentUser = ({ name, avatar, logout }) => (
 );
 
 const Inner = ({ githubAuthMutation, signingIn, setSigningIn }) => {
+  const client = useApolloClient();
+
   useEffect(() => {
     if (window.location.search.match(/code=/)) {
       setSigningIn(true);
@@ -55,7 +57,12 @@ const Inner = ({ githubAuthMutation, signingIn, setSigningIn }) => {
     <Me
       signingIn={signingIn}
       requestCode={requestCode}
-      logout={() => localStorage.removeItem("token")}
+      logout={() => {
+        localStorage.removeItem("token");
+        const data = client.readQuery({ query: ROOT_QUERY });
+        data.me = null;
+        client.writeQuery({ query: ROOT_QUERY, data: { ...data } });
+      }}
     />
   );
 };

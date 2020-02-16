@@ -4,18 +4,56 @@ import "./index.css";
 import App from "./App";
 import * as serviceWorker from "./serviceWorker";
 import { ApolloProvider } from "react-apollo";
-import ApolloClient from "apollo-boost";
+import {
+  ApolloClient,
+  InMemoryCache,
+  HttpLink,
+  ApolloLink,
+  split
+} from "apollo-boost";
+import { WebSocketLink } from "apollo-link-ws";
+import { getMainDefinition } from "apollo-utilities";
+import { persistCache } from "apollo-cache-persist";
+
+const cache = new InMemoryCache();
+persistCache({
+  cache,
+  storage: localStorage
+});
+
+if (localStorage["apollo-cache-persist"]) {
+  const cacheData = JSON.parse(localStorage["apollo-cache-persist"]);
+  cache.restore(cacheData);
+}
+
+const httpLink = new HttpLink({ uri: "http://localhost:4000/graphql" });
+const wsLink = new WebSocketLink({
+  uri: "ws://localhost:4000/graphql",
+  options: { reconnect: true }
+});
+const authLink = new ApolloLink((operation, foward) => {
+  operation.setContext(context => ({
+    headers: {
+      ...context.headers,
+      authorization: localStorage.getItem("token")
+    }
+  }));
+  return foward(operation);
+});
+
+const httpAuthLink = authLink.concat(httpLink);
+const link = split(
+  ({ query }) => {
+    const { kind, operation } = getMainDefinition(query);
+    return kind === "OperationDefinition" && operation === "subscription";
+  },
+  wsLink,
+  httpAuthLink
+);
 
 const client = new ApolloClient({
-  uri: "http://localhost:4000/graphql",
-  request: operation => {
-    operation.setContext(context => ({
-      headers: {
-        ...context.headers,
-        authorization: localStorage.getItem("token")
-      }
-    }));
-  }
+  cache,
+  link
 });
 
 ReactDOM.render(
