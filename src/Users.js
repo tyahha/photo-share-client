@@ -1,5 +1,5 @@
 import React from "react";
-import { Query, Mutation } from "react-apollo";
+import { Mutation, useQuery } from "react-apollo";
 import { gql } from "apollo-boost";
 import { ROOT_QUERY } from "./App";
 
@@ -13,40 +13,41 @@ const ADD_FAKE_USERS_MUTATION = gql`
   }
 `;
 
-const Users = () => (
-  <Query query={ROOT_QUERY} fetchPolicy={"cache-and-network"}>
-    {({ data, loading, refetch }) =>
-      loading ? (
-        <p>loading users...</p>
-      ) : (
-        <UserList
-          count={data.totalUsers}
-          users={data.allUsers}
-          refetchUsers={refetch}
-        />
-      )
-    }
-  </Query>
-);
+const Users = () => {
+  const { loading, data, refetch } = useQuery(ROOT_QUERY, {
+    fetchPolicy: "cache-and-network"
+  });
+  return loading ? (
+    <p>loading users...</p>
+  ) : (
+    <UserList
+      count={data.totalUsers}
+      users={data.allUsers}
+      refetchUsers={refetch}
+    />
+  );
+};
 
-const UserList = ({ count, users, refetchUsers }) => (
-  <div>
-    <p>{count} Users</p>
-    <button onClick={() => refetchUsers()}>Refetch Users</button>
-    <Mutation mutation={ADD_FAKE_USERS_MUTATION} variables={{ count: 1 }}>
-      {addFakeUsers => <button onClick={addFakeUsers}>Add Fake Users</button>}
-    </Mutation>
-    <ul>
-      {users.map(user => (
-        <UserListItem
-          key={user.githubLogin}
-          name={user.name}
-          avatar={user.avatar}
-        />
-      ))}
-    </ul>
-  </div>
-);
+const UserList = ({ count, users, refetchUsers }) => {
+  return (
+    <div>
+      <p>{count} Users</p>
+      <button onClick={() => refetchUsers()}>Refetch Users</button>
+      <Mutation mutation={ADD_FAKE_USERS_MUTATION} variables={{ count: 1 }}>
+        {addFakeUsers => <button onClick={addFakeUsers}>Add Fake Users</button>}
+      </Mutation>
+      <ul>
+        {users.map(user => (
+          <UserListItem
+            key={user.githubLogin}
+            name={user.name}
+            avatar={user.avatar}
+          />
+        ))}
+      </ul>
+    </div>
+  );
+};
 
 const UserListItem = ({ name, avatar }) => (
   <li>

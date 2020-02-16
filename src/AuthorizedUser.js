@@ -60,8 +60,7 @@ const Inner = ({ githubAuthMutation, signingIn, setSigningIn }) => {
       logout={() => {
         localStorage.removeItem("token");
         const data = client.readQuery({ query: ROOT_QUERY });
-        data.me = null;
-        client.writeQuery({ query: ROOT_QUERY, data: { ...data } });
+        client.writeQuery({ query: ROOT_QUERY, data: { ...data, me: null } });
       }}
     />
   );

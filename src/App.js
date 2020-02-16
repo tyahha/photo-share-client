@@ -40,9 +40,14 @@ const App = () => {
       .subscribe({ query: LISTEN_FOR_USERS })
       .subscribe(({ data: { newUser } }) => {
         const data = client.readQuery({ query: ROOT_QUERY });
-        data.totalUsers += 1;
-        data.allUsers = [...data.allUsers, newUser];
-        client.writeQuery({ query: ROOT_QUERY, data });
+        client.writeQuery({
+          query: ROOT_QUERY,
+          data: {
+            ...data,
+            totalUsers: data.totalUsers + 1,
+            allUsers: [...data.allUsers, newUser]
+          }
+        });
       });
     return () => {
       sub.unsubscribe();
